@@ -9,6 +9,8 @@ import seaborn as sns
 
 import os
 from tqdm import tqdm
+import pickle
+
 from utils import *
 from data import *
 
@@ -30,6 +32,19 @@ class Trainer():
 
         self.group_dict = {}
         self.group_lst = []
+
+        # Check if raw data is available
+        if self.data_sources not in os.listdir(self.data_dir + 'raw/'):
+            print('[ERROR] Data source:', self.data_sources, 'not found in raw data directory! STOP!')
+            return 1
+        else:
+            group_counter = 0
+            for i in os.listdir(self.data_dir + 'raw/' + self.data_sources):
+                if os.path.isdir(self.data_dir + 'raw/' + self.data_sources + '/' + i):
+                    self.group_lst.append(i)
+                    self.group_dict[i] = group_counter
+                    group_counter += 1
+            print('  => Found raw data source with these groups:', self.group_lst, ', with group directory:', self.group_dict)
 
     def clean_group(self, group_name, landmark_predictor, face_detector):
         counter = 0
@@ -81,19 +96,7 @@ class Trainer():
         return img_info_dic, error_img
 
     def data_cleaning(self):
-
-        # Check if raw data is available
-        if self.data_sources not in os.listdir(self.data_dir + 'raw/'):
-            print('[ERROR] Data source:', self.data_sources, 'not found in raw data directory! STOP!')
-            return 1
-        else:
-            group_counter = 0
-            for i in os.listdir(self.data_dir + 'raw/' + self.data_sources):
-                if os.path.isdir(self.data_dir + 'raw/' + self.data_sources + '/' + i):
-                    self.group_lst.append(i)
-                    self.group_dict[i] = group_counter
-                    group_counter += 1
-            print(' => Found raw data source with these groups:', self.group_lst, ', with group directory:', self.group_dict)
+        print(' => In data_cleaning!')
 
         # Predictor file path info
         predictor_path = self.reference_dir + 'shape_predictor_68_face_landmarks.dat'
@@ -119,6 +122,9 @@ class Trainer():
 
 
     def data_prep(self):
+        print(' => In data_prep!')
+        # print(self.group_dict)
+
         img_info_df = pd.read_csv(self.meta_data_dir + 'img_info_df.csv')
         error_img_df = pd.read_csv(self.meta_data_dir + 'error_img_df.csv')
         error_img_names = set(error_img_df.new_name.values)
@@ -129,16 +135,18 @@ class Trainer():
 
         num_error = img_info_df.query('error == 1').shape[0]
         num_normal = img_info_df.query('group == "normal" & error == "0"').shape[0]
-        print(' => Out of', img_info_df.shape[0], 'images,', num_error, 'were not cleaned/cropped correctly.')
-        print(' => Out of', img_info_df.shape[0], 'images,', num_normal, 'were cleaned/cropped correctly AND had a label of "normal eyes".')
+        print('  => Out of', img_info_df.shape[0], 'images,', num_error, 'were not cleaned/cropped correctly.')
+        print('  => Out of', img_info_df.shape[0], 'images,', num_normal, 'were cleaned/cropped correctly AND had a label of "normal eyes".')
 
         # Drop un-necessary columns
         img_info_df = img_info_df.query('error == 0').drop(columns = ['landmark']).reset_index(drop = True)
 
         # Resizing images
-        print(' => Now resizing images!')
-        img_info_df['resized_img'] = [resize_to(512, img_dir + fp) for fp in tqdm(img_info_cleaned_no_error.filepath)]
-        img_info_df['label'] = img_info_cleaned_no_error.group.apply(lambda g: self.group_dict[g])
+        print('  => Now resizing images!')
+        img_info_df['resized_img'] = [resize_to(512, self.processed_dir + fp) for fp in tqdm(img_info_df.filepath)]
+        img_info_df['label'] = img_info_df.group.apply(lambda g: self.group_dict[g])
 
-        pickle.dump(img_info_cleaned_no_error, open(self.processed_dir + 'img_info_df_no_error', 'wb'))
+        pickle.dump(img_info_df, open(self.processed_dir + 'img_info_df_no_error.pickle', 'wb'))
         img_info_df.drop(columns = ['resized_img']).to_csv(self.meta_data_dir + 'img_info_df_no_error.csv', index = False)
+        print(' => Done data_prep! Got', img_info_df.shape[0], 'images!')
+        return 0
