@@ -17,7 +17,7 @@ def display_help_menu():
     print('=> [run.py: parse_arg(argv)] Error parsing command line arguments!')
     print('         -h / --helep: show help menu')
     print('         -m= / --model=: [Required] the model name. [NEED TO HAVE CORRESPONDING JSON FILE IN "./config/" !!]')
-    print('         -c / --crop: run the cropping target')
+    # print('         -c / --crop: run the cropping target')
     # print('         -t / --test: running in test mode (i.e. with a toy dataset in ./data/test/)')
     # print('         -r / --run: running in training mode (i.e. with specified dataset in /data4/xuanyu/full_data_2021/')
     # print('         -s / --single-test: running single test')
@@ -29,7 +29,7 @@ def parse_arg(argv):
     except getopt.GetoptError:
         display_help_menu()
         sys.exit(2)
-    print(opts, args)
+    # print(opts, args)
     # print(opts, args)
     target = None
     model = None
@@ -65,24 +65,11 @@ def main():
     T = Trainer(config)
 
     if target == 'data_cleaning':
-        # print()
-        # img_info_df = T.process_full_face_img()
-        # img_info_df['to_predict'] = True
-        # meta_data_dir = T.curr_dir + 'data/meta_data/' + T.model_name + '.csv'
-        # img_info_df.to_csv(meta_data_dir, index = False)
-        # print(' => Done image cropping; got', img_info_df.shape[0], 'images; saved at: data/processed/' + T.model_name)
-        # print()
         T.data_cleaning()
     elif target == 'data_prep':
-        # print()
-        # img_info_df = pd.read_csv(T.curr_dir + 'data/meta_data/' + T.model_name + '/img_info_df.csv')\
-        #                 .query('to_predict == True').reset_index(drop = True)
-        # print(' => Loaded image info; found', img_info_df.shape[0], 'valid images to classify.')
-        # print()
-        # T.predict_eyelid_position(img_info_df)
         T.data_prep()
-    elif target == 'all':
-        pass
+    elif target == 'train':
+        T.train()
 
 
 

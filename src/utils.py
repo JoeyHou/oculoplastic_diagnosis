@@ -10,12 +10,7 @@ import numpy as np
 import pandas as pd
 from scipy import optimize
 
-
-# # Define text info
-# font = cv2.FONT_HERSHEY_SIMPLEX
-# fontScale = 1
-# fontColor = (255, 255, 255)
-# lineType = 2
+from sklearn.metrics import confusion_matrix, accuracy_score
 
 def predict_landmarks(image_path, landmark_predictor, face_detector):
     """
@@ -58,27 +53,6 @@ def predict_landmarks(image_path, landmark_predictor, face_detector):
     return image, output, shape
     # return image, shape
 
-# def detect_eye(image, shape):
-#     # print(shape)
-#     left_x = [i[0] for i in shape[:6]]
-#     left_y = [i[1] for i in shape[:6]]
-#     left_size = int((max(left_x) - min(left_x)) * 2.5)
-#     left_top = int(np.mean(left_y) - left_size / 2)
-#     left_left = int((max(left_x) + min(left_x) - left_size) / 2)
-#     left_eye = image[left_top: left_top + left_size, \
-#                      left_left: left_left + left_size]
-#
-#     right_x = [i[0] for i in shape[6:]]
-#     right_y = [i[1] for i in shape[6:]]
-#     right_size = int((max(right_x) - min(right_x)) * 2.5)
-#     right_top = int(np.mean(right_y) - right_size / 2)
-#     right_left = int((max(right_x) + min(right_x) - right_size) / 2)
-#     right_eye = image[right_top: right_top + right_size, \
-#                      right_left: right_left + right_size]
-#
-#     return left_eye, right_eye
-
-
 # Function to resize image
 def resize_to(desired_size, im_pth):
     im = cv2.imread(im_pth, 0)
@@ -105,7 +79,15 @@ def resize_to(desired_size, im_pth):
         print('  => Error at:', im_pth)
         return
 
-def get_random_string(length):
-    letters = list(string.ascii_lowercase)
-    result_str = ''.join(random.choice(letters) for i in range(length))
-    return result_str
+# def get_random_string(length):
+#     letters = list(string.ascii_lowercase)
+#     result_str = ''.join(random.choice(letters) for i in range(length))
+#     return result_str
+
+def output_analysis(pred, targets):
+    pred = np.array(pred)
+    targets = np.array([int(i.to('cpu')) for i in targets])
+    acc = accuracy_score(targets, pred)
+    return {
+        'acc': round(100 * acc, 2)
+    }

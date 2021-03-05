@@ -6,33 +6,68 @@ import numpy as np
 import pandas as pd
 from scipy import optimize
 import seaborn as sns
+from datetime import date
 
 import os
 from tqdm import tqdm
 import pickle
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+# from torch.utils.data.sampler import SubsetRandomSampler
+from torch.utils.data import Dataset, DataLoader, TensorDataset, RandomSampler, SequentialSampler
+import torch.optim as optim
+
+# import torchvision.transforms as transforms
+# from torchvision import datasets
+from sklearn.metrics import confusion_matrix, accuracy_score
+from sklearn.model_selection import train_test_split
+
 from utils import *
 from data import *
-
+from model import *
 
 class Trainer():
     def __init__(self, config):
+        print()
+        print(' => In Trainer.__init__()!')
+
+        # Runtime info
         self.model_name = config['model_name'] + '_' + config['version']
-        self.data_sources = config['data_sources']
-
         self.curr_dir = config['curr_dir']
-        self.data_dir = self.curr_dir + config['data_dir']
-        self.reference_dir = self.curr_dir + config['reference_dir']
-        self.meta_data_dir = self.data_dir + 'meta_data/' + self.data_sources + '/'
-        self.processed_dir = self.data_dir + 'processed/' + self.data_sources + '/'
 
+        # Data dir
+        self.reference_dir = self.curr_dir + config['reference_dir']
+        self.data_dir = self.curr_dir + config['data_dir']
         os.system('mkdir -p ' + self.data_dir)
+
+        # Image data
+        self.data_sources = config['data_sources']
+        self.processed_dir = self.data_dir + 'processed/' + self.data_sources + '/'
         os.system('mkdir -p ' + self.data_dir + 'processed/' + self.data_sources)
+
+        # Meta data
+        self.meta_data_dir = self.data_dir + 'meta_data/' + self.data_sources + '/'
         os.system('mkdir -p ' + self.data_dir + 'meta_data/' + self.data_sources)
 
+        # Loggings
+        self.training_log = self.meta_data_dir + 'models/training_log.txt'
+        self.testing_log = self.meta_data_dir + 'models/testing_log.txt'
+        self.training_log_lst = []
+
+        # Model info
+        self.model_config = config['model_config']
+        self.original_size = (256, 512) # self.model_config['original_size']
+        self.batch_size = self.model_config['batch_size']
+        self.curr_label = self.model_config['curr_label']
+        self.class_num = self.model_config['class_num']
+        self.n_epochs = self.model_config['n_epochs']
+        self.from_checkpoint = self.model_config['from_checkpoint']
+
+        # Group info
         self.group_dict = {}
         self.group_lst = []
-
         # Check if raw data is available
         if self.data_sources not in os.listdir(self.data_dir + 'raw/'):
             print('[ERROR] Data source:', self.data_sources, 'not found in raw data directory! STOP!')
@@ -45,6 +80,7 @@ class Trainer():
                     self.group_dict[i] = group_counter
                     group_counter += 1
             print('  => Found raw data source with these groups:', self.group_lst, ', with group directory:', self.group_dict)
+        print(' => Done init!')
 
     def clean_group(self, group_name, landmark_predictor, face_detector):
         counter = 0
@@ -96,6 +132,7 @@ class Trainer():
         return img_info_dic, error_img
 
     def data_cleaning(self):
+        print()
         print(' => In data_cleaning!')
 
         # Predictor file path info
@@ -122,6 +159,7 @@ class Trainer():
 
 
     def data_prep(self):
+        print()
         print(' => In data_prep!')
         # print(self.group_dict)
 
@@ -139,14 +177,198 @@ class Trainer():
         print('  => Out of', img_info_df.shape[0], 'images,', num_normal, 'were cleaned/cropped correctly AND had a label of "normal eyes".')
 
         # Drop un-necessary columns
-        img_info_df = img_info_df.query('error == 0').drop(columns = ['landmark']).reset_index(drop = True)
+        img_info_df_no_error = img_info_df.query('error == 0').drop(columns = ['landmark']).reset_index(drop = True)
 
         # Resizing images
         print('  => Now resizing images!')
-        img_info_df['resized_img'] = [resize_to(512, self.processed_dir + fp) for fp in tqdm(img_info_df.filepath)]
-        img_info_df['label'] = img_info_df.group.apply(lambda g: self.group_dict[g])
+        img_info_df_no_error['resized_img'] = [resize_to(512, self.processed_dir + fp) for fp in tqdm(img_info_df_no_error.filepath)]
+        img_info_df_no_error['label'] = img_info_df_no_error.group.apply(lambda g: self.group_dict[g])
 
-        pickle.dump(img_info_df, open(self.processed_dir + 'img_info_df_no_error.pickle', 'wb'))
-        img_info_df.drop(columns = ['resized_img']).to_csv(self.meta_data_dir + 'img_info_df_no_error.csv', index = False)
-        print(' => Done data_prep! Got', img_info_df.shape[0], 'images!')
+        # Assigining train-val-test
+        all_idx = list(range(img_info_df_no_error.shape[0]))
+        img_info_df_no_error['img_idx'] = all_idx
+        X_train_idx, X_test_idx, y_train, y_test = train_test_split(all_idx, all_idx, test_size = 0.3, random_state = 42)
+        X_val_idx, X_test_idx, y_val, y_test = train_test_split(X_test_idx, y_test, test_size = 0.5, random_state = 42)
+        # print(len(X_train_idx), len(X_val_idx), len(X_test_idx))
+        # img_info_df_no_error['dataset'] = all_idx
+        def calc_dataset(s):
+            if s in X_train_idx:
+                return 'train'
+            if s in X_val_idx:
+                return 'val'
+            if s in X_test_idx:
+                return 'test'
+        img_info_df_no_error['dataset'] = [calc_dataset(idx) for idx in tqdm(img_info_df_no_error.img_idx.values)]
+
+        # Adding customized labels
+        for group in self.group_lst:
+            img_info_df_no_error['label_' + group] = img_info_df_no_error.group.apply(lambda g: 1 if g == group else 0)
+
+        # Saving data to pickle file
+        pickle.dump(img_info_df_no_error, open(self.processed_dir + 'img_info_df_no_error.pickle', 'wb'))
+        img_info_df_no_error.drop(columns = ['resized_img']).to_csv(self.meta_data_dir + 'img_info_df_no_error.csv', index = False)
+        print(' => Done data_prep! Got', img_info_df_no_error.shape[0], 'images!')
         return 0
+
+    def dataloader_helper(self, df, train = False):
+        data_set = TensorDataset(torch.tensor([i for i in df.resized_img.values]),
+                                 torch.tensor(df[self.curr_label].values),
+                                 torch.tensor(df.img_idx.values))
+        if train:
+            return DataLoader(data_set, sampler = RandomSampler(data_set), batch_size = self.batch_size)
+        else:
+            return DataLoader(data_set, sampler = SequentialSampler(data_set), batch_size = self.batch_size)
+
+    def dataloader_prep(self):
+        print('  => In dataloader_prep!')
+
+        # Load pickle file
+        # data_file = open(self.data_pkl_dir, 'rb')
+        data = pd.read_pickle(self.processed_dir + 'img_info_df_no_error.pickle')
+
+        # Make dataloaders
+        train_df = data.query('dataset == "train"').reset_index(drop = True)
+        val_df = data.query('dataset == "val"').reset_index(drop = True)
+        test_df = data.query('dataset == "test"').reset_index(drop = True)
+
+        train_dataloader = self.dataloader_helper(train_df, train = True)
+        val_dataloader = self.dataloader_helper(val_df)
+        test_dataloader = self.dataloader_helper(test_df)
+
+        print('  => Done dataloader_prep!')
+        return train_dataloader, val_dataloader, test_dataloader
+
+    def train(self):
+        print()
+        print(' => Training!')
+        # Data preparation
+        train_dataloader, val_dataloader, test_dataloader = self.dataloader_prep()
+
+        # create a complete CNN
+        self.model_config['original_size'] = self.original_size
+        model = DiagnoisisNet(self.model_config)
+        # print(model)
+        # move tensors to GPU if CUDA is available
+        train_on_gpu = torch.cuda.is_available()
+        if train_on_gpu:
+            print('  => Using cuda :)')
+            model.cuda()
+        else:
+            print('  => No GPU :/')
+        # specify loss function (categorical cross-entropy)
+        criterion = nn.CrossEntropyLoss()
+        # specify optimizer
+        optimizer = optim.Adam(model.parameters(), lr=0.00001)
+        # optimizer = optim.SGD(model.parameters(), lr=0.00001)
+
+
+        valid_loss_min = np.Inf # track change in validation loss
+
+        starting_epoch = self.from_checkpoint + 1
+        best_test_acc = 0
+        for epoch in tqdm(range(starting_epoch, starting_epoch + self.n_epochs)):
+
+            # keep track of training and validation loss
+            train_loss = 0.0
+            valid_loss = 0.0
+
+            ###################
+            # train the model #
+            ###################
+            model.train()
+
+            # indices = torch.randperm(len(X_train), dtype = torch.long, device = 'cpu')
+            # train_dataloader = torch.utils.data.DataLoader(indices, batch_size = batch_size)
+            train_pred = []
+            train_label = []
+            train_scores = []
+            for batch in train_dataloader:
+                data, label, img_names = batch
+                # move tensors to GPU if CUDA is available
+                if train_on_gpu:
+                    data, target = data.cuda(), target.cuda()
+                # clear the gradients of all optimized variables
+                optimizer.zero_grad()
+                # forward pass: compute predicted outputs by passing inputs to the model
+                output = model(data)
+
+                # print(output.shape, target.shape)
+                # calculate the batch loss
+                loss = criterion(output, target)
+                # backward pass: compute gradient of the loss with respect to model parameters
+                loss.backward()
+                # perform a single optimization step (parameter update)
+                optimizer.step()
+                # update training loss
+                train_loss += loss.item() * data.size(0)
+                output_scores = output.to('cpu').detach().numpy()
+                output = np.argmax(output_scores, axis = 1).flatten()
+                for o in output:
+                    train_pred.append(o)
+                for s in output_scores:
+                    train_scores.append(s)
+                for t in target:
+                    train_label.append(t)
+            train_acc = output_analysis(np.array(train_pred), np.array(train_label))['acc']
+
+            ######################
+            # validate the model #
+            ######################
+            model.eval()
+            indices = list(range(len(X_val)))
+            test_dataloader = torch.utils.data.DataLoader(indices, batch_size = batch_size)
+            test_pred = []
+            test_label = []
+            test_scores = []
+            for batch in test_dataloader:
+                data, label, img_names = batch
+                # move tensors to GPU if CUDA is available
+                if train_on_gpu:
+                    data, target = data.cuda(), target.cuda()
+                # forward pass: compute predicted outputs by passing inputs to the model
+                with torch.no_grad():
+                    output = model(data)
+                # calculate the batch loss
+
+                loss = criterion(output, target)
+                # update average validation loss
+                valid_loss += loss.item()*data.size(0)
+                # Update for acc
+                output_scores = output.to('cpu').detach().numpy()
+                output = np.argmax(output_scores, axis = 1).flatten()
+                for o in output:
+                    test_pred.append(o)
+                for s in output_scores:
+                    test_scores.append(s)
+                for t in target:
+                    test_label.append(t)
+            test_acc = output_analysis(np.array(test_pred), np.array(test_label))['acc']
+
+            # calculate average losses
+            train_loss = train_loss/len(X_train)
+            valid_loss = valid_loss/len(X_val)
+
+            # if epoch % 10 == 0:
+            #     # print training/validation statistics
+            #     print('Epoch: {} \tTraining Loss: {:.6f} \tValidation Loss: {:.6f}'.format(
+            #         epoch, train_loss, valid_loss))
+            #     print('Train acc:', train_acc, '; vali acc:', test_acc)
+
+            # save model if validation loss has decreased
+            if test_acc > best_test_acc:
+                torch.save(model.state_dict(), 'tmp_model.pt')
+                best_test_acc = test_acc
+            tmp_summary_dict = {}
+            tmp_summary_dict['epoch'] = epoch
+            tmp_summary_dict['val_acc'] = test_acc
+            tmp_summary_dict['train_acc'] = train_acc
+            tmp_summary_dict['train_loss'] = train_loss
+            tmp_summary_dict['valid_loss'] = valid_loss
+            self.training_log_lst.append(tmp_summary_dict)
+        training_summary_df = pd.DataFrame(self.training_log_lst)
+
+        model = DiagnoisisNet(class_num = 3)
+        model.load_state_dict(torch.load('tmp_model.pt'))
+        test_acc = self.run_single_test(model, test_dataloader, return_prediction_dict = False)
+        torch.save(model.state_dict(), file_dir + 'models/model_' + self.model_name + '.pt')
+        return training_summary_df, test_acc
