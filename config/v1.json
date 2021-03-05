@@ -1,0 +1,8 @@
+{
+    "model_name": "doctor_2classes",
+    "version": "v1",
+    "data_sources": "03032021",
+    "curr_dir": "./",
+    "data_dir": "data/",
+    "reference_dir": "reference/"
+}
