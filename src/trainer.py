@@ -52,7 +52,7 @@ class Trainer():
         os.system('mkdir -p ' + self.meta_data_dir)
 
         # Models
-        self.model_dir = self.curr_dir + 'models/' + self.data_sources + '/'
+        self.model_dir = self.data_dir + 'models/' + self.data_sources + '/'
         os.system('mkdir -p ' + self.model_dir)
 
         # Loggings
@@ -385,3 +385,57 @@ class Trainer():
         test_acc = self.run_single_test(model, test_dataloader, return_prediction_dict = False)
         torch.save(model.state_dict(), self.model_dir + 'model_' + self.model_name + '.pt')
         return training_summary_df, test_acc
+
+    def run_single_test(self, model, dataloader, return_prediction_dict = True):
+        print()
+        print(" => Testing!")
+        test_on_gpu = torch.cuda.is_available()
+        if test_on_gpu:
+            print('  => Testing on cuda :)')
+            model.cuda()
+        else:
+            print('  => No GPU :/')
+        # model.cuda()
+
+        model.eval()
+        nb_eval_steps, nb_eval_examples = 0, 0
+        test_label = []
+        test_pred = []
+        test_scores = []
+        all_prediction_dict = {}
+        first_batch = True
+        # Evaluate data for one epoch
+        for batch in tqdm(dataloader):
+
+            data, target, img_names = batch
+             # move tensors to GPU if CUDA is available
+            if test_on_gpu:
+                data, target = data.cuda(), target.cuda()
+            # forward pass: compute predicted outputs by passing inputs to the model
+            with torch.no_grad():
+                output = model(data)
+
+            # loss = criterion(output, target)
+            # # update average validation loss
+            # valid_loss += loss.item()*data.size(0)
+            # Update for acc
+            if test_on_gpu:
+                output_scores = output.to('cpu').detach().numpy()
+            else:
+                output_scores = output.detach().numpy()
+            output = np.argmax(output_scores, axis = 1).flatten()
+            for o in output:
+                test_pred.append(o)
+            for s in output_scores:
+                test_scores.append(s)
+            for t in target:
+                test_label.append(t)
+
+            for i in range(len(img_names)):
+                all_prediction_dict[img_names[i]] = [output_scores[i], output[i]]
+        test_acc = output_analysis(np.array(test_pred), np.array(test_label))['acc']
+        # print(test_acc)
+        if return_prediction_dict:
+            return test_acc, all_prediction_dict
+        else:
+            return test_acc
