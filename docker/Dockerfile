@@ -30,7 +30,6 @@ RUN echo "===> install pytorch" &&\
 RUN echo "===> install cv2" &&\
     apt-get update &&\
     sudo apt-get install python3-opencv -y --force-yes
-    ##END
 
 # 4) change back to notebook user
 COPY /run_jupyter.sh /
@@ -38,4 +37,4 @@ RUN chmod 755 /run_jupyter.sh
 USER $NB_UID
 
 # Override command to disable running jupyter notebook at launch
-# CMD ["/bin/bash"]
+CMD ["/bin/bash"]

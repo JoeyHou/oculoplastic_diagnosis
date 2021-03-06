@@ -10,10 +10,11 @@
         "chann1": 4,
         "chann2": 16,
         "chann3": 64,
+        "num_pooling": 3,
         "mid_dim": 512,
         "dropout": 0.4,
         "batch_size": 20,
-        "n_epochs": 5,
+        "n_epochs": 2,
         "curr_label": "label_ptosis",
         "from_checkpoint": 0
     }

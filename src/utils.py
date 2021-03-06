@@ -86,7 +86,8 @@ def resize_to(desired_size, im_pth):
 
 def output_analysis(pred, targets):
     pred = np.array(pred)
-    targets = np.array([int(i.to('cpu')) for i in targets])
+    # targets = np.array([int(i.to('cpu')) for i in targets])
+    targets = np.array(targets)
     acc = accuracy_score(targets, pred)
     return {
         'acc': round(100 * acc, 2)

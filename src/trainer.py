@@ -45,11 +45,15 @@ class Trainer():
         # Image data
         self.data_sources = config['data_sources']
         self.processed_dir = self.data_dir + 'processed/' + self.data_sources + '/'
-        os.system('mkdir -p ' + self.data_dir + 'processed/' + self.data_sources)
+        os.system('mkdir -p ' + self.processed_dir)
 
         # Meta data
         self.meta_data_dir = self.data_dir + 'meta_data/' + self.data_sources + '/'
-        os.system('mkdir -p ' + self.data_dir + 'meta_data/' + self.data_sources)
+        os.system('mkdir -p ' + self.meta_data_dir)
+
+        # Models
+        self.model_dir = self.curr_dir + 'models/' + self.data_sources + '/'
+        os.system('mkdir -p ' + self.model_dir)
 
         # Loggings
         self.training_log = self.meta_data_dir + 'models/training_log.txt'
@@ -211,7 +215,9 @@ class Trainer():
         return 0
 
     def dataloader_helper(self, df, train = False):
-        data_set = TensorDataset(torch.tensor([i for i in df.resized_img.values]),
+        img_vec = torch.tensor([i for i in df.resized_img.values])
+        img_vec = img_vec.reshape((img_vec.shape[0], 1, img_vec.shape[1], img_vec.shape[2])).float()
+        data_set = TensorDataset(img_vec,
                                  torch.tensor(df[self.curr_label].values),
                                  torch.tensor(df.img_idx.values))
         if train:
@@ -261,7 +267,6 @@ class Trainer():
         optimizer = optim.Adam(model.parameters(), lr=0.00001)
         # optimizer = optim.SGD(model.parameters(), lr=0.00001)
 
-
         valid_loss_min = np.Inf # track change in validation loss
 
         starting_epoch = self.from_checkpoint + 1
@@ -283,7 +288,8 @@ class Trainer():
             train_label = []
             train_scores = []
             for batch in train_dataloader:
-                data, label, img_names = batch
+                data, target, img_names = batch
+                # print(data.shape, target.shape, img_names.shape)
                 # move tensors to GPU if CUDA is available
                 if train_on_gpu:
                     data, target = data.cuda(), target.cuda()
@@ -291,7 +297,7 @@ class Trainer():
                 optimizer.zero_grad()
                 # forward pass: compute predicted outputs by passing inputs to the model
                 output = model(data)
-
+                # print(output.shape)
                 # print(output.shape, target.shape)
                 # calculate the batch loss
                 loss = criterion(output, target)
@@ -301,7 +307,10 @@ class Trainer():
                 optimizer.step()
                 # update training loss
                 train_loss += loss.item() * data.size(0)
-                output_scores = output.to('cpu').detach().numpy()
+                if train_on_gpu:
+                    output_scores = output.to('cpu').detach().numpy()
+                else:
+                    output_scores = output.detach().numpy()
                 output = np.argmax(output_scores, axis = 1).flatten()
                 for o in output:
                     train_pred.append(o)
@@ -309,19 +318,20 @@ class Trainer():
                     train_scores.append(s)
                 for t in target:
                     train_label.append(t)
+
             train_acc = output_analysis(np.array(train_pred), np.array(train_label))['acc']
 
             ######################
             # validate the model #
             ######################
             model.eval()
-            indices = list(range(len(X_val)))
-            test_dataloader = torch.utils.data.DataLoader(indices, batch_size = batch_size)
+            # indices = list(range(len(X_val)))
+            # test_dataloader = torch.utils.data.DataLoader(indices, batch_size = batch_size)
             test_pred = []
             test_label = []
             test_scores = []
             for batch in test_dataloader:
-                data, label, img_names = batch
+                data, target, img_names = batch
                 # move tensors to GPU if CUDA is available
                 if train_on_gpu:
                     data, target = data.cuda(), target.cuda()
@@ -334,7 +344,10 @@ class Trainer():
                 # update average validation loss
                 valid_loss += loss.item()*data.size(0)
                 # Update for acc
-                output_scores = output.to('cpu').detach().numpy()
+                if train_on_gpu:
+                    output_scores = output.to('cpu').detach().numpy()
+                else:
+                    output_scores = output.detach().numpy()
                 output = np.argmax(output_scores, axis = 1).flatten()
                 for o in output:
                     test_pred.append(o)
@@ -345,8 +358,8 @@ class Trainer():
             test_acc = output_analysis(np.array(test_pred), np.array(test_label))['acc']
 
             # calculate average losses
-            train_loss = train_loss/len(X_train)
-            valid_loss = valid_loss/len(X_val)
+            train_loss = train_loss/len(train_dataloader)
+            valid_loss = valid_loss/len(test_dataloader)
 
             # if epoch % 10 == 0:
             #     # print training/validation statistics
@@ -356,7 +369,7 @@ class Trainer():
 
             # save model if validation loss has decreased
             if test_acc > best_test_acc:
-                torch.save(model.state_dict(), 'tmp_model.pt')
+                torch.save(model.state_dict(), self.curr_dir + 'tmp/tmp_model.pt')
                 best_test_acc = test_acc
             tmp_summary_dict = {}
             tmp_summary_dict['epoch'] = epoch
@@ -367,8 +380,8 @@ class Trainer():
             self.training_log_lst.append(tmp_summary_dict)
         training_summary_df = pd.DataFrame(self.training_log_lst)
 
-        model = DiagnoisisNet(class_num = 3)
-        model.load_state_dict(torch.load('tmp_model.pt'))
+        model = DiagnoisisNet(self.model_config)
+        model.load_state_dict(torch.load(self.curr_dir + 'tmp/tmp_model.pt'))
         test_acc = self.run_single_test(model, test_dataloader, return_prediction_dict = False)
-        torch.save(model.state_dict(), file_dir + 'models/model_' + self.model_name + '.pt')
+        torch.save(model.state_dict(), self.model_dir + 'model_' + self.model_name + '.pt')
         return training_summary_df, test_acc
