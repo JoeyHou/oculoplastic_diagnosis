@@ -28,9 +28,10 @@ RUN echo "===> install pytorch" &&\
     conda install pytorch torchvision -c pytorch
 
 RUN echo "===> install cv2" &&\
-    apt-get update &&\
-    sudo apt-get install python3-opencv -y --force-yes
-
+#    apt update &&\
+#    sudo apt install python3-opencv -y --force-yes
+    pip install opencv-python
+    
 # 4) change back to notebook user
 COPY /run_jupyter.sh /
 RUN chmod 755 /run_jupyter.sh
