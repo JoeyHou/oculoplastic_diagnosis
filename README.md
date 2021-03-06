@@ -16,7 +16,7 @@ Oculoplastics Disgnosis
     │             ├── normal
     │             ├── ptosis
     │             ├── thyroid_eye_disease
-    │             └── ...
+    │             └── others
     │
     ├── notebooks          <- Jupyter notebooks.
     ├── docker             <- Docker related files
