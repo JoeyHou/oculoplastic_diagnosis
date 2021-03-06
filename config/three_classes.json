@@ -14,7 +14,7 @@
         "mid_dim": 512,
         "dropout": 0.4,
         "batch_size": 20,
-        "n_epochs": 2,
+        "n_epochs": 500,
         "curr_label": "label",
         "from_checkpoint": 0
     }

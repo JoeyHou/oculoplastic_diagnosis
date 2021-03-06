@@ -1,0 +1,21 @@
+{
+    "model_name": "ted_over_other",
+    "version": "v1",
+    "data_sources": "03032021",
+    "curr_dir": "./",
+    "data_dir": "data/",
+    "reference_dir": "reference/",
+    "model_config": {
+        "class_num": 2,
+        "chann1": 4,
+        "chann2": 16,
+        "chann3": 64,
+        "num_pooling": 3,
+        "mid_dim": 512,
+        "dropout": 0.4,
+        "batch_size": 20,
+        "n_epochs": 500,
+        "curr_label": "label_thyroid_eye_disease",
+        "from_checkpoint": 0
+    }
+}
