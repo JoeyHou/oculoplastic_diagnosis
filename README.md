@@ -1,5 +1,4 @@
 # Oculoplastics Disgnosis
-==============================
 
 ## Project Description
 This project dedicates to automatically diagnose selected oculoplastics diseases.
@@ -10,7 +9,7 @@ This project dedicates to automatically diagnose selected oculoplastics diseases
 Oculoplastics Disgnosis
     ├── README.md          <- The top-level README for developers using this project.
     ├── data
-    │   ├── processed 	   <- Processed data.
+    │   ├── processed 	   <- Processed images.
     │   ├── meta_data 	   <- Meta data about the dataset (i.e. prediction results, image_path, etc.)
     │   └── raw            <- The original, immutable data dump.
     │        └── some_data_identifier <- put images for each group into corresponding folder
