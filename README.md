@@ -3,9 +3,8 @@
 ## Project Description
 This project dedicates to automatically diagnose selected oculoplastics diseases.
 
-
-## Projcet Orgnization
 ------------
+## Projcet Orgnization
 
     ├── README.md          <- The top-level README for developers using this project.
     ├── data
@@ -23,8 +22,9 @@ This project dedicates to automatically diagnose selected oculoplastics diseases
     ├── reference          <- Related files from other projects, including related papers, models, etc.
     └── src                <- Source code
 
+------------
 ## Running the code
-----------
+
 ### 1. Getting the data into the right place
 - **Step 1**: To begin with, run the script `python src/first_time_setup.py` to build necessary folders
 - **Step 2**: make a directory for current data (in case we have more data coming in the later course), for example, we can do `03032021`.
@@ -63,6 +63,3 @@ To specify a data source, edit the `data_sources` field of the json file. This w
 --------
 
 <p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
-
-
--------
