@@ -36,6 +36,7 @@ class Trainer():
         # Runtime info
         self.model_name = config['model_name'] + '_' + config['version']
         self.curr_dir = config['curr_dir']
+        self.config = config
 
         # Data dir
         self.reference_dir = self.curr_dir + config['reference_dir']
@@ -52,8 +53,8 @@ class Trainer():
         os.system('mkdir -p ' + self.meta_data_dir)
 
         # Models dir
-        self.model_dir = self.data_dir + 'models/' + self.data_sources + '/'
-        os.system('mkdir -p ' + self.model_dir)
+        self.checkpoints_dir = self.data_dir + 'checkpoints/' + self.model_name + '/'
+        os.system('mkdir -p ' + self.checkpoints_dir)
         os.system('mkdir -p ' + self.curr_dir + 'tmp/')
 
         # Loggings
@@ -374,6 +375,9 @@ class Trainer():
             if test_acc > best_test_acc:
                 torch.save(model.state_dict(), self.curr_dir + 'tmp/tmp_model.pt')
                 best_test_acc = test_acc
+
+            # Handle loggins
+
             tmp_summary_dict = {}
             tmp_summary_dict['epoch'] = epoch
             tmp_summary_dict['val_acc'] = test_acc
@@ -381,14 +385,23 @@ class Trainer():
             tmp_summary_dict['train_loss'] = train_loss
             tmp_summary_dict['valid_loss'] = valid_loss
             self.training_log_lst.append(tmp_summary_dict)
-        training_summary_df = pd.DataFrame(self.training_log_lst)
-        training_summary_df.to_csv(self.meta_data_dir + 'training_log.csv', index = False)
 
+        # Training summaries
+        training_summary_df = pd.DataFrame(self.training_log_lst)
+        print(' => Final train&val stats:', )
+        print(df.sort_values(by = 'val_acc', ascending = False).head())
+
+        # Testing stats
         model = DiagnoisisNet(self.model_config)
         model.load_state_dict(torch.load(self.curr_dir + 'tmp/tmp_model.pt'))
         test_acc = self.run_single_test(model, test_dataloader, return_prediction_dict = False)
         print(' => Final test acc:', test_acc)
-        torch.save(model.state_dict(), self.model_dir + 'model_' + self.model_name + '.pt')
+
+        # saving the best model to checkpoints_dir, together with the config files
+        training_summary_df.to_csv(self.checkpoints_dir + 'training_log.csv', index = False)
+        torch.save(model.state_dict(), self.checkpoints_dir + 'model_' + self.model_name + '.pt')
+        with open(self.checkpoints_dir + 'model_' + self.model_name + '.json', 'w') as outfile:
+            json.dump(self.config, outfile)
         return training_summary_df, test_acc
 
     def run_single_test(self, model, dataloader, return_prediction_dict = True):
