@@ -6,7 +6,7 @@ This project dedicates to automatically diagnose selected oculoplastics diseases
 
 ## Projcet Orgnization
 ------------
-Oculoplastics Disgnosis
+
     ├── README.md          <- The top-level README for developers using this project.
     ├── data
     │   ├── processed 	   <- Processed images.
