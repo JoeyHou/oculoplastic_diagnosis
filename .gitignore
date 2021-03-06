@@ -3,6 +3,8 @@
 .DS_Store
 data/
 tmp/
+runtime_note
+data.zip
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

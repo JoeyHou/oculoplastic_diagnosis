@@ -31,7 +31,17 @@ RUN echo "===> install cv2" &&\
 #    apt update &&\
 #    sudo apt install python3-opencv -y --force-yes
     pip install opencv-python
-    
+
+RUN echo "===> install dlib related packages" &&\
+#    sudo apt-get install build-essential cmake pkg-config &&\
+#    sudo apt-get install libx11-dev libatlas-base-dev &&\
+#    sudo apt-get install libgtk-3-dev libboost-python-dev &&\
+    pip install numpy scipy matplotlib scikit-image scikit-learn ipython &&\
+    pip install dlib
+
+RUN echo "===> install other libraries" &&\
+    pip install imutils
+
 # 4) change back to notebook user
 COPY /run_jupyter.sh /
 RUN chmod 755 /run_jupyter.sh
