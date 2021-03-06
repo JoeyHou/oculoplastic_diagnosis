@@ -42,24 +42,24 @@ class Trainer():
         self.data_dir = self.curr_dir + config['data_dir']
         os.system('mkdir -p ' + self.data_dir)
 
-        # Image data
+        # Image data dir
         self.data_sources = config['data_sources']
         self.processed_dir = self.data_dir + 'processed/' + self.data_sources + '/'
         os.system('mkdir -p ' + self.processed_dir)
 
-        # Meta data
+        # Meta data dir
         self.meta_data_dir = self.data_dir + 'meta_data/' + self.data_sources + '/'
         os.system('mkdir -p ' + self.meta_data_dir)
 
-        # Models
+        # Models dir
         self.model_dir = self.data_dir + 'models/' + self.data_sources + '/'
         os.system('mkdir -p ' + self.model_dir)
         os.system('mkdir -p ' + self.curr_dir + 'tmp/')
 
         # Loggings
-        self.training_log = self.meta_data_dir + 'models/training_log.txt'
-        self.testing_log = self.meta_data_dir + 'models/testing_log.txt'
-        self.training_log_lst = []
+        self.training_log = self.meta_data_dir + self.data_sources + 'training_log.txt'
+        self.testing_log = self.meta_data_dir + self.data_sources + 'testing_log.txt'
+        # self.training_log_lst = []
 
         # Model info
         self.model_config = config['model_config']
@@ -382,10 +382,12 @@ class Trainer():
             tmp_summary_dict['valid_loss'] = valid_loss
             self.training_log_lst.append(tmp_summary_dict)
         training_summary_df = pd.DataFrame(self.training_log_lst)
+        training_summary_df.to_csv(self.meta_data_dir + 'training_log.csv', index = False)
 
         model = DiagnoisisNet(self.model_config)
         model.load_state_dict(torch.load(self.curr_dir + 'tmp/tmp_model.pt'))
         test_acc = self.run_single_test(model, test_dataloader, return_prediction_dict = False)
+        print(' => Final test acc:', test_acc)
         torch.save(model.state_dict(), self.model_dir + 'model_' + self.model_name + '.pt')
         return training_summary_df, test_acc
 
