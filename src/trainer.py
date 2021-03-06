@@ -4,9 +4,10 @@ import dlib
 import math
 import numpy as np
 import pandas as pd
-from scipy import optimize
+import json
 import seaborn as sns
 from datetime import date
+from scipy import optimize
 
 import os
 from tqdm import tqdm
@@ -389,7 +390,7 @@ class Trainer():
         # Training summaries
         training_summary_df = pd.DataFrame(self.training_log_lst)
         print(' => Final train&val stats:', )
-        print(df.sort_values(by = 'val_acc', ascending = False).head())
+        print(training_summary_df.sort_values(by = 'val_acc', ascending = False).head())
 
         # Testing stats
         model = DiagnoisisNet(self.model_config)
