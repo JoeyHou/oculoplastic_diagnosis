@@ -13,8 +13,8 @@
         "num_pooling": 3,
         "mid_dim": 512,
         "dropout": 0.4,
-        "batch_size": 2000,
-        "n_epochs": 2,
+        "batch_size": 20,
+        "n_epochs": 200,
         "curr_label": "label_ptosis",
         "from_checkpoint": 0
     }
