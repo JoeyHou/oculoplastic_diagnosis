@@ -319,7 +319,8 @@ class Trainer():
                 for t in target:
                     train_label.append(t)
 
-            train_acc = output_analysis(np.array(train_pred), np.array(train_label))['acc']
+            train_acc = sum(np.array(train_pred) == np.array(train_label)) / len(train_pred)
+            # train_acc = output_analysis(np.array(train_pred), np.array(train_label))['acc']
 
             ######################
             # validate the model #
@@ -355,7 +356,8 @@ class Trainer():
                     test_scores.append(s)
                 for t in target:
                     test_label.append(t)
-            test_acc = output_analysis(np.array(test_pred), np.array(test_label))['acc']
+            # test_acc = output_analysis(np.array(test_pred), np.array(test_label))['acc']
+            test_acc = sum(np.array(test_pred) == np.array(test_label)) / len(test_pred)
 
             # calculate average losses
             train_loss = train_loss/len(train_dataloader)
@@ -433,7 +435,8 @@ class Trainer():
 
             for i in range(len(img_names)):
                 all_prediction_dict[img_names[i]] = [output_scores[i], output[i]]
-        test_acc = output_analysis(np.array(test_pred), np.array(test_label))['acc']
+        # test_acc = output_analysis(np.array(test_pred), np.array(test_label))['acc']
+        test_acc = sum(np.array(test_pred) == np.array(test_label)) / len(test_pred)
         # print(test_acc)
         if return_prediction_dict:
             return test_acc, all_prediction_dict
