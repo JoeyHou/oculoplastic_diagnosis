@@ -59,7 +59,7 @@ class Trainer():
         # Loggings
         self.training_log = self.meta_data_dir + self.data_sources + 'training_log.txt'
         self.testing_log = self.meta_data_dir + self.data_sources + 'testing_log.txt'
-        # self.training_log_lst = []
+        self.training_log_lst = []
 
         # Model info
         self.model_config = config['model_config']
