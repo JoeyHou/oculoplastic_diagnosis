@@ -1,0 +1,21 @@
+{
+    "model_name": "doctor_2classes",
+    "version": "v1",
+    "data_sources": "03032021",
+    "curr_dir": "./",
+    "data_dir": "data/",
+    "reference_dir": "reference/",
+    "model_config": {
+        "class_num": 2,
+        "chann1": 4,
+        "chann2": 16,
+        "chann3": 64,
+        "num_pooling": 3,
+        "mid_dim": 512,
+        "dropout": 0.4,
+        "batch_size": 2000,
+        "n_epochs": 2,
+        "curr_label": "label_ptosis",
+        "from_checkpoint": 0
+    }
+}
