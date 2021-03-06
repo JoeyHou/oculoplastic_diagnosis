@@ -54,6 +54,7 @@ class Trainer():
         # Models
         self.model_dir = self.data_dir + 'models/' + self.data_sources + '/'
         os.system('mkdir -p ' + self.model_dir)
+        os.system('mkdir -p ' + self.curr_dir + 'tmp/')
 
         # Loggings
         self.training_log = self.meta_data_dir + 'models/training_log.txt'
